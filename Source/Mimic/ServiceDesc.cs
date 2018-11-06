@@ -27,6 +27,12 @@
         public string Path = null;
 
         /// <summary>
+        /// The Headers that the service responds to.
+        /// This is a optional field.
+        /// </summary>
+        public string Headers = null;
+
+        /// <summary>
         /// A filter that can optionally be used to limit the service so that 
         /// it only responds to requests that contain the specified text in 
         /// their bodies.

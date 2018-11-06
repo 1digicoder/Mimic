@@ -1,6 +1,9 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.Http;
 using System;
 using Mimic;
+using Mimic.Utils;
 
 namespace UnitTests
 {
@@ -91,6 +94,79 @@ namespace UnitTests
 
             Assert.IsFalse(result2, "Try add should return false when adding service2.");
             Assert.IsFalse(serviceCollection.Contains(service2), "serviceCollection should not contain service2.");
+        }
+
+        [TestMethod]
+        public void ServiceCollection_TryAdd_AddRequest_Different_Headers()
+        {
+            var h1 = new HeaderDictionary();
+            var h2 = new HeaderDictionary();
+
+            h1.Add("A", new StringValues("ABC"));
+            h2.Add("A", new StringValues("ABCD"));
+            // Arrange
+            var desc1 = new ServiceDesc()
+            {
+                Method = "GET",
+                Path = "/api/resource",
+                BodyContains = "lorem ipsum",
+                Headers = ParseFunctions.ToJsonString(h1)
+            };
+            var desc2 = new ServiceDesc()
+            {
+                Method = "GET",
+                Path = "/api/resource",
+                BodyContains = "lorem ipsum",
+                Headers = ParseFunctions.ToJsonString(h2)
+            };
+            var service1 = new Service(desc1);
+            var service2 = new Service(desc2);
+            var serviceCollection = new ServiceCollection();
+
+            // Act
+
+            var result1 = serviceCollection.TryAdd(service1);
+            var result2 = serviceCollection.TryAdd(service2);
+            // Assert
+
+            Assert.AreEqual(2, serviceCollection.Count);
+        }
+
+		[TestMethod]
+        public void ServiceCollection_TryAdd_AddRequest_Same_Headers()
+        {
+            // Arrange
+            var h1 = new HeaderDictionary();
+            var h2 = new HeaderDictionary();
+
+            h1.Add("A", new StringValues("ABC"));
+            h2.Add("A", new StringValues("ABC"));
+
+            var desc1 = new ServiceDesc()
+            {
+                Method = "GET",
+                Path = "/api/resource",
+                BodyContains = "lorem ipsum",
+                Headers = ParseFunctions.ToJsonString(h1)
+            };
+            var desc2 = new ServiceDesc()
+            {
+                Method = "GET",
+                Path = "/api/resource",
+                BodyContains = "lorem ipsum",
+                Headers = ParseFunctions.ToJsonString(h2)
+            };
+            var service1 = new Service(desc1);
+            var service2 = new Service(desc2);
+            var serviceCollection = new ServiceCollection();
+
+            // Act
+
+            var result1 = serviceCollection.TryAdd(service1);
+            var result2 = serviceCollection.TryAdd(service2);
+            // Assert
+
+            Assert.AreEqual(1, serviceCollection.Count);
         }
 
         [TestMethod]

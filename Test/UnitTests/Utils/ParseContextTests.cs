@@ -2,6 +2,8 @@
 using System;
 using System.IO;
 using Mimic.Utils;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
 
 namespace UnitTests.Utils
 {
@@ -37,6 +39,20 @@ namespace UnitTests.Utils
             // Act
             var parseContext = new ParseContext(nullReader, state);
         }
+
+        [TestMethod]
+        public void ParseContext_ConvertToFromHeaderDictionary()
+		{
+			var h1 = new HeaderDictionary();
+			h1.Add("A", new StringValues(new string[] { "ABC", "DEF" }));
+			h1.Add("B", new StringValues(new string[] { "123", "456", "789" }));
+			var from = ParseFunctions.ToJsonString(h1);
+			System.Diagnostics.Debug.WriteLine($"{from}");
+			var target = ParseFunctions.ToHeaderDictionary(from);
+            
+			Assert.AreEqual(2, target.Count);
+
+		}
 
         [TestMethod]
         [ExpectedException(typeof(ArgumentNullException))]

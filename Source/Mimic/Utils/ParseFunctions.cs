@@ -1,7 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace Mimic.Utils
 {
@@ -103,6 +108,19 @@ namespace Mimic.Utils
                 return next();
             }
         }
+		public static HeaderDictionary ToHeaderDictionary(string json)
+        {
+			var obj = JsonConvert.DeserializeObject<HeaderDictionary>(json, new HeaderJsonConverter());
+
+			return obj;
+        }
+
+        public static string ToJsonString(HeaderDictionary headers)
+        {
+			var json = JsonConvert.SerializeObject(headers, new HeaderJsonConverter());
+
+			return json;
+        }
 
         private static void RequiresSettingExists(FieldInfo field, string settingName)
         {
@@ -112,4 +130,83 @@ namespace Mimic.Utils
             }
         }
     }
+
+	public class HeaderJsonConverter : JsonConverter<HeaderDictionary>
+	{
+		public override void WriteJson(JsonWriter writer, HeaderDictionary value, JsonSerializer serializer)
+		{
+
+
+			writer.WriteStartArray();
+			foreach(var item in value)
+			{
+                
+				writer.WriteStartObject();
+				writer.WritePropertyName(item.Key);
+				writer.WriteStartArray();
+				foreach (var subItem in item.Value)
+				{
+					writer.WriteValue(subItem);
+				}
+				writer.WriteEndArray();
+				writer.WriteEndObject();
+			}
+			writer.WriteEndArray();
+		}
+
+		public override HeaderDictionary ReadJson(JsonReader reader, Type objectType, HeaderDictionary existingValue, bool hasExistingValue, JsonSerializer serializer)
+		{
+			var r = new HeaderDictionary();
+
+            if (reader.TokenType == JsonToken.StartArray)
+			{
+				reader.Read();
+				while (reader.TokenType != JsonToken.EndArray)
+				{
+                    if (reader.TokenType != JsonToken.StartObject)
+                    {
+                        throw new JsonSerializationException("Unexpected Token");
+                    }
+					r.Add(ExtractKvp(reader));                   
+				}
+			}
+
+			return r;
+		}
+
+		private static KeyValuePair<string, StringValues> ExtractKvp(JsonReader reader)
+		{
+			string key;
+			ICollection<string> values = new List<string>();
+
+			reader.Read();
+			if (reader.TokenType != JsonToken.PropertyName)
+			{
+				throw new JsonSerializationException("Unexpected token.");
+			}
+			key = (string)reader.Value;
+			reader.Read();
+			if (reader.TokenType != JsonToken.StartArray)
+			{
+				throw new JsonSerializationException("Unexpected token.");
+			}
+			reader.Read();
+			while (reader.TokenType != JsonToken.EndArray)
+			{
+				if (reader.TokenType != JsonToken.String)
+				{
+					throw new JsonSerializationException("Unexpected token.");
+				}
+				values.Add((string)reader.Value);
+				reader.Read();
+			}
+			reader.Read();
+			if (reader.TokenType != JsonToken.EndObject)
+            {
+                throw new JsonSerializationException("Unexpected Token.");
+			}
+			reader.Read();
+			return new KeyValuePair<string, StringValues>(key, values.ToArray());
+		}
+	}
 }

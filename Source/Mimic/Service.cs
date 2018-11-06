@@ -18,6 +18,8 @@ namespace Mimic
         private readonly string method;
         private readonly string path;
         private readonly string bodyFilter;
+		private readonly HeaderDictionary headers
+		    = new HeaderDictionary();
         private readonly ServiceResponse response;
 
         private readonly object thisLock;
@@ -72,6 +74,10 @@ namespace Mimic
             };
             callCount = 0;
             lastRequestBody = string.Empty;
+            if (!string.IsNullOrEmpty(desc.Headers))
+            {
+                headers = ParseFunctions.ToHeaderDictionary(desc.Headers);
+            }
         }
 
         /// <summary>
@@ -84,7 +90,8 @@ namespace Mimic
 
             return method == other.method &&
                 path == other.path &&
-                bodyFilter == other.bodyFilter;
+                bodyFilter == other.bodyFilter &&
+                MatchesHeaders(other.headers);
         }
 
         /// <summary>
@@ -101,7 +108,8 @@ namespace Mimic
             RequiresArgument.NotNull(body, "body");
 
             return method == request.Method 
-                && path == WebUtility.UrlDecode(request.Path + request.QueryString).ToUpperInvariant() 
+                && path == WebUtility.UrlDecode(request.Path + request.QueryString).ToUpperInvariant()
+                && MatchesHeaders(request.Headers)
                 && MatchesBodyFilter(body);
         }
 
@@ -159,6 +167,22 @@ namespace Mimic
             {
                 throw new ArgumentException("Provided service ID is not a GUID.");
             }
+        }
+
+        private bool MatchesHeaders(IHeaderDictionary other)
+		{
+			if (other.Count == 0 && headers.Count == 0)
+			{
+				return true;
+			}
+            foreach(var header in headers)
+            {
+				if (other.ContainsKey(header.Key) == false || other[header.Key] != header.Value)
+				{
+					return false;
+				}
+            }
+            return true;
         }
 
         private bool MatchesBodyFilter(string body)

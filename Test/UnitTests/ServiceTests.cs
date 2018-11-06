@@ -3,6 +3,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using UnitTests.TestDoubles;
 using Mimic;
+using Mimic.Utils;
+using Microsoft.Extensions.Primitives;
 
 namespace UnitTests
 {
@@ -393,7 +395,7 @@ namespace UnitTests
             Assert.IsFalse(result);
         }
 
-        [TestMethod]
+		[TestMethod]
         public void Service_MatchesRequest_ReturnsFalseWhenMismatchedBodyFilter()
         {
             // Arrange
@@ -424,7 +426,141 @@ namespace UnitTests
             // Assert
             Assert.IsFalse(result);
         }
+        [TestMethod]
+        public void Service_MatchesRequest_ReturnsFalseWhenMissingKeyInHeaders()
+        {
+            // Arrange
+            var h1 = new HeaderDictionary();
+            h1.Add("A", new StringValues("ABC"));
+            var desc = new ServiceDesc()
+            {
+                // Note: case shouldn't matter. The ctor converts it to uppercase.
+                Method = "GET",
+                // Note: case shouldn't matter. When matching both the sides are converted to uppercase. 
+                Path = "/api/resource?x=1",
+                Headers = ParseFunctions.ToJsonString(h1)
+            };
+            var service = new Service(desc);
 
+            var httpRequest = new TestHttpRequest()
+            {
+                Method = "GET",
+                Path = "/api/resource"
+            };
+
+            // Act
+            var result = service.MatchesRequest(
+                httpRequest,
+                "Lorem ipsum dolor sit amet, consectetur adipiscing"
+                );
+
+            // Assert
+            Assert.IsFalse(result);
+        }
+		[TestMethod]
+        public void Service_MatchesRequest_ReturnsTrueWhenSameKeyInHeaders()
+        {
+            // Arrange
+            var h1 = new HeaderDictionary();
+            var h2 = new HeaderDictionary();
+            h1.Add("A", new StringValues("ABC"));
+            h2.Add("A", new StringValues("ABC"));
+            var desc = new ServiceDesc()
+            {
+                // Note: case shouldn't matter. The ctor converts it to uppercase.
+                Method = "GET",
+                // Note: case shouldn't matter. When matching both the sides are converted to uppercase. 
+                Path = "/api/resource?x=1",
+                Headers = ParseFunctions.ToJsonString(h1)
+            };
+            var service = new Service(desc);
+
+            var httpRequest = new TestHttpRequest()
+            {
+                Method = "GET",
+				Path = "/api/resource",
+				QueryString = new QueryString("?x=1"),
+            };
+			httpRequest.Headers.Add("A", new StringValues("ABC"));
+            // Act
+            var result = service.MatchesRequest(
+                httpRequest,
+                "Lorem ipsum dolor sit amet, consectetur adipiscing"
+                );
+
+            // Assert
+            Assert.IsTrue(result);
+        }
+		[TestMethod]
+        public void Service_MatchesRequest_ReturnsFalseWhenOneOfManyHeadersDoNotMatch()
+        {
+            // Arrange
+            var h1 = new HeaderDictionary();
+            h1.Add("A", new StringValues("ABC"));
+            var desc = new ServiceDesc()
+            {
+                // Note: case shouldn't matter. The ctor converts it to uppercase.
+                Method = "GET",
+                // Note: case shouldn't matter. When matching both the sides are converted to uppercase. 
+                Path = "/api/resource?x=1",
+                Headers = ParseFunctions.ToJsonString(h1)
+            };
+            var service = new Service(desc);
+
+            var httpRequest = new TestHttpRequest()
+            {
+                Method = "GET",
+                Path = "/api/resource",
+                QueryString = new QueryString("?x=1")
+            };
+
+            httpRequest.Headers.Add("AAA", new StringValues("AC"));
+            httpRequest.Headers.Add("AA", new StringValues("AB"));
+            httpRequest.Headers.Add("A", new StringValues("ABCE"));
+            // Act
+            var result = service.MatchesRequest(
+                httpRequest,
+                "Lorem ipsum dolor sit amet, consectetur adipiscing"
+                );
+
+            // Assert
+            Assert.IsFalse(result);
+        }
+		[TestMethod]
+        public void Service_MatchesRequest_ReturnsTrueWhenOneOfManyHeadersMatch()
+		{
+            // Arrange
+            var h1 = new HeaderDictionary();
+            h1.Add("A", new StringValues("ABC"));
+            var desc = new ServiceDesc()
+            {
+                // Note: case shouldn't matter. The ctor converts it to uppercase.
+                Method = "GET",
+                // Note: case shouldn't matter. When matching both the sides are converted to uppercase. 
+                Path = "/api/resource?x=1",
+                Headers = ParseFunctions.ToJsonString(h1)
+            };
+            var service = new Service(desc);
+
+            var httpRequest = new TestHttpRequest()
+            {
+                Method = "GET",
+                Path = "/api/resource",
+                QueryString = new QueryString("?x=1")
+            };
+
+            httpRequest.Headers.Add("AAA", new StringValues("AC"));
+            httpRequest.Headers.Add("AA", new StringValues("AB"));
+            httpRequest.Headers.Add("A", new StringValues("ABC"));
+            // Act
+            var result = service.MatchesRequest(
+                httpRequest,
+                "Lorem ipsum dolor sit amet, consectetur adipiscing"
+                );
+
+            // Assert
+            Assert.IsTrue(result);
+        }
         [TestMethod]
         [ExpectedException(typeof(ArgumentNullException))]
         public void Service_MatchesRequest_ThrowsOnNullRequest()

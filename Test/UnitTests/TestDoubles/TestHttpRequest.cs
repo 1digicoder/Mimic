@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -22,7 +23,7 @@ namespace UnitTests.TestDoubles
         public override IQueryCollection Query { get; set; }
         public override string Protocol { get; set; }
 
-        public override IHeaderDictionary Headers => throw new NotImplementedException();
+        public override IHeaderDictionary Headers { get; }
 
         public override IRequestCookieCollection Cookies { get; set; }
         public override long? ContentLength { get; set; }
@@ -50,6 +51,7 @@ namespace UnitTests.TestDoubles
 
         public TestHttpRequest()
         {
+            this.Headers = new HeaderDictionary();
         }
     }
 }
