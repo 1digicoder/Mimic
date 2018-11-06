@@ -1,0 +1,23 @@
+FROM microsoft/aspnetcore-build:2.0.0 AS build
+
+WORKDIR /src
+EXPOSE 80
+
+COPY ./Source ./Source
+COPY ./Test ./Test
+COPY Mimic.sln .
+
+RUN dotnet restore && dotnet build
+
+FROM build AS tester
+
+RUN dotnet test ./Test/UnitTests/UnitTests.csproj 
+# Don't know how to run functional tests - requires running mimic
+
+FROM build AS publish
+RUN dotnet publish -c Release -o /app
+
+FROM microsoft/aspnetcore:2.0.0 AS runtime
+WORKDIR /app
+COPY --from=publish /app .
+ENTRYPOINT ["dotnet", "Mimic.dll"]
